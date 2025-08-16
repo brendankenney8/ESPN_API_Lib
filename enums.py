@@ -1,0 +1,1 @@
+# Put enums here such as teams 
