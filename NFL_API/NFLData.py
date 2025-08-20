@@ -7,5 +7,5 @@ from abc import ABC, abstractmethod
 class NFLData:
     @staticmethod
     @abstractmethod
-    def get(self, *args, **kwargs):
+    def get(*args, **kwargs):
         pass
