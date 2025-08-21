@@ -1,4 +1,4 @@
-from NFL_API import Game
+from src.espn_api import Game
 
 def main():
 	result = Game.get(401671834)

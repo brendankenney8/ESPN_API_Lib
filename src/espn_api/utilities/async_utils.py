@@ -16,7 +16,7 @@ def run(coro):
 
     if loop and loop.is_running():
         raise RuntimeError(
-            "A running event loop was detected. Use the async API (e.g., await Game.get_async(...)) instead of the sync wrapper."
+            "Cannot call sync API from within a running event loop."
         )
 
     return asyncio.run(coro)

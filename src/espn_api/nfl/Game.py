@@ -1,4 +1,5 @@
-from utilities import request, run as _run
+from espn_api.utilities.async_utils import run as _run
+from espn_api.utilities.request import get_request
 import NFLData
 
 
@@ -25,7 +26,7 @@ class Game(NFLData):
                 f"http://sports.core.api.espn.com/v2/sports/football/leagues/nfl/events/{gameID}/competitions/{gameID}/odds"
             ]
 
-            all_data = await request.get(urls)
+            all_data = await get_request(urls)
             return all_data
         except:
             raise

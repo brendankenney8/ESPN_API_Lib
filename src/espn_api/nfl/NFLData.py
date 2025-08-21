@@ -2,7 +2,7 @@
 #  (such as getting stats or teams, etc.)
 # Currently only one abstract method
 
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 
 class NFLData:
     @staticmethod
