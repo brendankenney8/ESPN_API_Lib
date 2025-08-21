@@ -1,6 +1,5 @@
-from utilities import request
-from utilities.async_utils import run as _run
-from .NFLData import NFLData
+from utilities import request, run as _run
+import NFLData
 
 
 class Game(NFLData):
