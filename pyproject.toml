@@ -12,7 +12,6 @@ license = { text = "MIT" }
 authors = [{ name = "Brendan Kenney" }]
 dependencies = [
   "aiohttp>=3.9",
-  # add others you actually import, e.g. "pydantic>=2" if you use it
 ]
 
 [project.urls]
@@ -20,4 +19,4 @@ Homepage = "https://github.com/brendankenney8/ESPN_API_Lib"
 Issues = "https://github.com/brendankenney8/ESPN_API_Lib/issues"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/espn_api_lib"]
+packages = ["src/espn_api"]
