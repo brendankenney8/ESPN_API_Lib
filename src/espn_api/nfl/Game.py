@@ -4,8 +4,11 @@ from espn_api.nfl.NFLData import NFLData
 
 
 class Game(NFLData):
-    def __init__(self, teams):
+    def __init__(self, teams, score, odds, stats):
         self.teams = teams
+        self.score = score
+        self.odds  = odds
+        self.stats = stats
 
     @staticmethod
     def get(gameID):
@@ -27,6 +30,9 @@ class Game(NFLData):
             ]
 
             all_data = await get_request(urls)
+
+            # format all_data here into a Game object
+
             return all_data
         except:
             raise

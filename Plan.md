@@ -15,3 +15,7 @@ Games and Standings
 Stats for games and season for teams and maybe players in the future
 Odds and spread line for a game
 More ...
+
+### How modular should responses be
+
+Should a game include stats and odds or maybe just teams and score
