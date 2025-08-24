@@ -10,13 +10,6 @@ class Game(NFLData):
         self.odds  = odds
         self.stats = stats
 
-    @staticmethod
-    def get(gameID):
-        """Synchronous API. Runs the async variant under the hood.
-
-        Raises a clear error if called from within a running event loop.
-        """
-        return _run(Game.get_async(gameID))
 
     @staticmethod
     async def get_async(gameID):

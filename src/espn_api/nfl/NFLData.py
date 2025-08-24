@@ -2,10 +2,15 @@
 #  (such as getting stats or teams, etc.)
 # Currently only one abstract method
 
-from abc import abstractmethod
+from abc import ABC, abstractmethod
+from espn_api.utilities.async_utils import run as _run
 
-class NFLData:
+class NFLData(ABC):
+    @classmethod
+    def get(cls, *args, **kwargs):
+        return _run(cls.get_async(*args, **kwargs))
+
     @staticmethod
     @abstractmethod
-    def get(*args, **kwargs):
+    async def get_async(*args, **kwargs):
         pass
