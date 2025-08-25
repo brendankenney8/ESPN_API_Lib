@@ -7,5 +7,5 @@ class Odds(NFLData):
         self.test = 0
     
     @staticmethod
-    async def get_async():
+    async def _get_async():
         return

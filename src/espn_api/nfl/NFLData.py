@@ -8,9 +8,9 @@ from espn_api.utilities.async_utils import run as _run
 class NFLData(ABC):
     @classmethod
     def get(cls, *args, **kwargs):
-        return _run(cls.get_async(*args, **kwargs))
+        return _run(cls._get_async(*args, **kwargs))
 
     @staticmethod
     @abstractmethod
-    async def get_async(*args, **kwargs):
+    async def _get_async(*args, **kwargs):
         pass

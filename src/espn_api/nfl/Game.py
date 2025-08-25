@@ -12,7 +12,7 @@ class Game(NFLData):
 
 
     @staticmethod
-    async def get_async(gameID):
+    async def _get_async(gameID):
         if not isinstance(gameID, int):
             raise TypeError("GameID must be an int")
 
