@@ -29,52 +29,110 @@ class Odds(NFLData):
             'priority': provider.get('priority')
         }
     
+    def _get_nested_value(self, data, *keys, default=None):
+        """Safely get a value from nested dictionaries"""
+        current = data
+        for key in keys:
+            if not isinstance(current, dict):
+                return default
+            current = current.get(key, {})
+        return current if current != {} else default
+
     def _parse_odds_details(self, odds_data):
         """Parse the main odds details"""
         if not odds_data or not isinstance(odds_data, dict):
             return {}
             
-        return {
+        # Safely get nested dictionaries with defaults
+        away_team_odds = self._get_nested_value(odds_data, 'awayTeamOdds', default={})
+        home_team_odds = self._get_nested_value(odds_data, 'homeTeamOdds', default={})
+        current_data = self._get_nested_value(odds_data, 'current', default={})
+        
+        # Get current spread values
+        current_spread = self._get_nested_value(current_data, 'pointSpread', 'alternateDisplayValue')
+        current_total = self._get_nested_value(current_data, 'total', 'alternateDisplayValue')
+        
+        # Get current moneyline odds
+        current_ml_away = self._get_nested_value(away_team_odds, 'current', 'moneyLine', 'american')
+        current_ml_home = self._get_nested_value(home_team_odds, 'current', 'moneyLine', 'american')
+        
+        # Get current spread odds
+        current_spread_away = self._get_nested_value(away_team_odds, 'current', 'spread', 'american')
+        current_spread_home = self._get_nested_value(home_team_odds, 'current', 'spread', 'american')
+        
+        # Create details dictionary with type conversion and validation
+        details = {
             'details': odds_data.get('details'),
-            'over_under': odds_data.get('overUnder'),
-            'over_odds': odds_data.get('overOdds'),
-            'under_odds': odds_data.get('underOdds'),
-            'spread_odds': odds_data.get('spreadOdds'),
-            'away_team_odds': odds_data.get('awayTeamOdds', {}).get('favorite'),
-            'home_team_odds': odds_data.get('homeTeamOdds', {}).get('favorite'),
-            'money_line_away': odds_data.get('moneyLineAway'),
-            'money_line_home': odds_data.get('moneyLineHome'),
-            'money_line_draw': odds_data.get('moneyLineDraw'),
-            'open_date': odds_data.get('openDate'),
-            'last_updated': odds_data.get('lastUpdated'),
-            'point_spread_away': odds_data.get('pointSpreadAway'),
-            'point_spread_home': odds_data.get('pointSpreadHome'),
-            'point_spread_away_line': odds_data.get('pointSpreadAwayLine'),
-            'point_spread_home_line': odds_data.get('pointSpreadHomeLine'),
-            'score_away': odds_data.get('scoreAway'),
-            'score_home': odds_data.get('scoreHome'),
-            'vig_away': odds_data.get('vigAway'),
-            'vig_home': odds_data.get('vigHome')
+            'over_under': self._safe_float(odds_data.get('overUnder')),
+            'over_odds': self._safe_float(odds_data.get('overOdds')),
+            'under_odds': self._safe_float(odds_data.get('underOdds')),
+            'spread': self._safe_float(odds_data.get('spread')),
+            'current_spread': self._safe_float(current_spread) if current_spread else None,
+            'current_total': self._safe_float(current_total) if current_total else None,
+            'away_team_odds': {
+                'favorite': away_team_odds.get('favorite'),
+                'underdog': away_team_odds.get('underdog'),
+                'money_line': self._safe_int(away_team_odds.get('moneyLine')),
+                'current_money_line': self._safe_int(current_ml_away) if current_ml_away else None,
+                'spread_odds': self._safe_float(away_team_odds.get('spreadOdds')),
+                'current_spread_odds': self._safe_int(current_spread_away) if current_spread_away else None
+            },
+            'home_team_odds': {
+                'favorite': home_team_odds.get('favorite'),
+                'underdog': home_team_odds.get('underdog'),
+                'money_line': self._safe_int(home_team_odds.get('moneyLine')),
+                'current_money_line': self._safe_int(current_ml_home) if current_ml_home else None,
+                'spread_odds': self._safe_float(home_team_odds.get('spreadOdds')),
+                'current_spread_odds': self._safe_int(current_spread_home) if current_spread_home else None
+            },
+            'last_updated': odds_data.get('lastUpdated')
         }
+        
+        # Remove None values
+        return {k: v for k, v in details.items() if v is not None}
     
     def _parse_spread(self, odds_data):
         """Parse spread data"""
         if not odds_data or not isinstance(odds_data, dict):
             return {}
             
-        return {
+        away_team_odds = self._get_nested_value(odds_data, 'awayTeamOdds', default={})
+        home_team_odds = self._get_nested_value(odds_data, 'homeTeamOdds', default={})
+        
+        # Get current spread values
+        current_spread = self._get_nested_value(odds_data, 'current', 'pointSpread', 'alternateDisplayValue')
+        current_spread_away = self._get_nested_value(away_team_odds, 'current', 'pointSpread', 'alternateDisplayValue')
+        current_spread_home = self._get_nested_value(home_team_odds, 'current', 'pointSpread', 'alternateDisplayValue')
+        
+        # Get current spread odds
+        current_spread_odds_away = self._get_nested_value(away_team_odds, 'current', 'spread', 'american')
+        current_spread_odds_home = self._get_nested_value(home_team_odds, 'current', 'spread', 'american')
+        
+        spread_data = {
             'away': {
-                'point_spread': odds_data.get('pointSpreadAway'),
-                'point_spread_line': odds_data.get('pointSpreadAwayLine'),
-                'vig': odds_data.get('vigAway'),
-                'odds': odds_data.get('spreadOdds')
+                'point_spread': self._safe_float(odds_data.get('spread')),
+                'current_point_spread': self._safe_float(current_spread_away) if current_spread_away else None,
+                'spread_odds': self._safe_float(away_team_odds.get('spreadOdds')),
+                'current_spread_odds': self._safe_int(current_spread_odds_away) if current_spread_odds_away else None,
+                'favorite': away_team_odds.get('favorite'),
+                'underdog': away_team_odds.get('underdog')
             },
             'home': {
-                'point_spread': odds_data.get('pointSpreadHome'),
-                'point_spread_line': odds_data.get('pointSpreadHomeLine'),
-                'vig': odds_data.get('vigHome'),
-                'odds': -odds_data.get('spreadOdds') if odds_data.get('spreadOdds') else None
-            }
+                'point_spread': self._safe_float(odds_data.get('spread')),
+                'current_point_spread': self._safe_float(current_spread_home) if current_spread_home else None,
+                'spread_odds': self._safe_float(home_team_odds.get('spreadOdds')),
+                'current_spread_odds': self._safe_int(current_spread_odds_home) if current_spread_odds_home else None,
+                'favorite': home_team_odds.get('favorite'),
+                'underdog': home_team_odds.get('underdog')
+            },
+            'current_spread': self._safe_float(current_spread) if current_spread else None
+        }
+        
+        # Clean up None values
+        return {
+            'away': {k: v for k, v in spread_data['away'].items() if v is not None},
+            'home': {k: v for k, v in spread_data['home'].items() if v is not None},
+            'current_spread': spread_data['current_spread']
         }
     
     def _parse_moneyline(self, odds_data):
@@ -82,30 +140,75 @@ class Odds(NFLData):
         if not odds_data or not isinstance(odds_data, dict):
             return {}
             
-        return {
+        # Safely get nested data
+        away_team_odds = self._get_nested_value(odds_data, 'awayTeamOdds', default={})
+        home_team_odds = self._get_nested_value(odds_data, 'homeTeamOdds', default={})
+        
+        # Get current moneyline odds
+        current_ml_away = self._get_nested_value(away_team_odds, 'current', 'moneyLine', 'american')
+        current_ml_home = self._get_nested_value(home_team_odds, 'current', 'moneyLine', 'american')
+        
+        moneyline_data = {
             'away': {
-                'odds': odds_data.get('moneyLineAway'),
-                'favorite': odds_data.get('awayTeamOdds', {}).get('favorite')
+                'odds': self._safe_int(odds_data.get('moneyLineAway')),
+                'current_odds': self._safe_int(current_ml_away) if current_ml_away else None,
+                'favorite': away_team_odds.get('favorite'),
+                'underdog': away_team_odds.get('underdog')
             },
             'home': {
-                'odds': odds_data.get('moneyLineHome'),
-                'favorite': odds_data.get('homeTeamOdds', {}).get('favorite')
+                'odds': self._safe_int(odds_data.get('moneyLineHome')),
+                'current_odds': self._safe_int(current_ml_home) if current_ml_home else None,
+                'favorite': home_team_odds.get('favorite'),
+                'underdog': home_team_odds.get('underdog')
             },
             'draw': {
-                'odds': odds_data.get('moneyLineDraw')
+                'odds': self._safe_int(odds_data.get('moneyLineDraw'))
             }
         }
+        
+        # Clean up None values
+        return {
+            'away': {k: v for k, v in moneyline_data['away'].items() if v is not None},
+            'home': {k: v for k, v in moneyline_data['home'].items() if v is not None},
+            'draw': {k: v for k, v in moneyline_data['draw'].items() if v is not None}
+        }
     
+    def _safe_float(self, value):
+        """Safely convert value to float, return None if not possible"""
+        try:
+            return float(value) if value is not None else None
+        except (ValueError, TypeError):
+            return None
+            
+    def _safe_int(self, value):
+        """Safely convert value to int, return None if not possible"""
+        try:
+            return int(value) if value is not None else None
+        except (ValueError, TypeError):
+            return None
+            
     def _parse_over_under(self, odds_data):
         """Parse over/under data"""
         if not odds_data or not isinstance(odds_data, dict):
             return {}
             
-        return {
-            'line': odds_data.get('overUnder'),
-            'over_odds': odds_data.get('overOdds'),
-            'under_odds': odds_data.get('underOdds')
+        # Get current over/under data
+        current = self._get_nested_value(odds_data, 'current', default={})
+        current_over = self._get_nested_value(current, 'over', 'american')
+        current_under = self._get_nested_value(current, 'under', 'american')
+        current_total = self._get_nested_value(current, 'total', 'alternateDisplayValue')
+        
+        over_under_data = {
+            'line': self._safe_float(odds_data.get('overUnder')),
+            'current_line': self._safe_float(current_total) if current_total else None,
+            'over_odds': self._safe_float(odds_data.get('overOdds')),
+            'current_over_odds': self._safe_int(current_over) if current_over else None,
+            'under_odds': self._safe_float(odds_data.get('underOdds')),
+            'current_under_odds': self._safe_int(current_under) if current_under else None
         }
+        
+        # Remove None values
+        return {k: v for k, v in over_under_data.items() if v is not None}
     
     def _parse_last_updated(self, odds_data):
         """Parse last updated timestamp"""

@@ -8,62 +8,118 @@ class Game(NFLData):
     def __init__(self, game_data, odds_data=None):
         """
         Initialize a Game object with game data and optional odds data
-        """
-        self.game_id = game_data.get('id')
-        self.status = game_data.get('status', {}).get('type', {}).get('name')
-        self.date = self._parse_datetime(game_data.get('date'))
-        self.venue = game_data.get('competitions', [{}])[0].get('venue', {}).get('fullName')
-        self.location = game_data.get('competitions', [{}])[0].get('location')
-        self.attendance = game_data.get('competitions', [{}])[0].get('attendance')
         
+        Args:
+            game_data: Raw game data from ESPN API
+            odds_data: Raw odds data from ESPN API (optional)
+        """
+        self.raw_data = game_data
+        competitions = game_data.get('competitions', [{}])
+        self.competition = competitions[0] if competitions else {}
+        
+        # Basic game info
+        self.game_id = game_data.get('id')
+        self.name = game_data.get('name', '')
+        self.short_name = game_data.get('shortName', '')
+        self.date = self._parse_datetime(game_data.get('date'))
+        
+        # Status information
+        self.status = self._get_nested_value(game_data, ['status', 'type', 'name'])
+        
+        # Venue information
+        venue = self.competition.get('venue', {})
+        self.venue = {
+            'id': venue.get('id'),
+            'name': venue.get('fullName'),
+            'address': venue.get('address', {}),
+            'indoor': venue.get('indoor'),
+            'grass': venue.get('grass')
+        }
+
+        self.attendance = self.competition.get('attendance')
+        
+        teams_short = self.short_name.split('@')
         # Team information
-        self.competitors = self._parse_competitors(game_data.get('competitions', [{}])[0].get('competitors', []))
-        self.home_team = next((team for team in self.competitors if team.get('homeAway') == 'home'), {})
-        self.away_team = next((team for team in self.competitors if team.get('homeAway') == 'away'), {})
+        self.home_team = {
+            'id': self._get_nested_value(self.competition, ['competitors', 0, 'id']),
+            'name': teams_short[1].strip(),
+        }
+
+        self.away_team = {
+            'id': self._get_nested_value(self.competition, ['competitors', 1, 'id']),
+            'name': teams_short[0].strip(),
+        }
         
         # Odds
         self.odds = Odds(odds_data) if odds_data else None
         
         # Game details
         self.details = {
-            'season': game_data.get('season', {}).get('year'),
-            'week': game_data.get('week', {}).get('number'),
-            'season_type': game_data.get('season', {}).get('type'),
-            'neutral_site': game_data.get('competitions', [{}])[0].get('neutralSite', False),
-            'conference_competition': game_data.get('competitions', [{}])[0].get('conferenceCompetition', False),
-            'play_by_play_available': game_data.get('playByPlaySource'),
-            'broadcasts': [broadcast.get('names', []) for broadcast in game_data.get('competitions', [{}])[0].get('broadcasts', [])]
+            'season': self._get_nested_value(game_data, ['season', 'year']),
+            'week': self._get_nested_value(game_data, ['week', 'number']),
+            'season_type': self._get_nested_value(game_data, ['season', 'type']),
+            'neutral_site': self.competition.get('neutralSite', False),
+            'conference_competition': self.competition.get('conferenceCompetition', False),
+            'play_by_play_available': self._get_nested_value(game_data, ['playByPlaySource', 'state']) == 'full',
+            'broadcasts': self._get_broadcast_info(),
+            'format': self.competition.get('format', {})
         }
-
-    def _parse_competitors(self, competitors_data):
-        """Parse the competitors data into a more usable format"""
-        parsed = []
-        for competitor in competitors_data:
-            team = competitor.get('team', {})
-            parsed.append({
-                'id': team.get('id'),
-                'name': team.get('displayName'),
-                'abbreviation': team.get('abbreviation'),
-                'score': competitor.get('score'),
-                'homeAway': competitor.get('homeAway'),
-                'winner': competitor.get('winner'),
-                'record': {
-                    'wins': competitor.get('record', [{}])[0].get('items', [{}])[0].get('stats', [{}])[0].get('value'),
-                    'losses': competitor.get('record', [{}])[0].get('items', [{}])[1].get('stats', [{}])[0].get('value'),
-                    'ties': competitor.get('record', [{}])[0].get('items', [{}])[2].get('stats', [{}])[0].get('value')
-                },
-                'logo': team.get('logo')
-            })
-        return parsed
+        
     
     def _parse_datetime(self, date_str):
-        """Parse the datetime string from ESPN format"""
+        """
+        Parse the datetime string from ESPN format
+        
+        Args:
+            date_str: Date string in format 'YYYY-MM-DDTHH:MMZ'
+            
+        Returns:
+            datetime object if parsing succeeds, original string if it fails, or None if input is None
+        """
         if not date_str:
             return None
+            
         try:
-            return datetime.strptime(date_str, '%Y-%m-%dT%H:%MZ')
-        except:
+            # Handle both '2025-01-04T21:30Z' and '2025-01-04T21:30:00Z' formats
+            if date_str.count(':') == 1:  # No seconds
+                return datetime.strptime(date_str, '%Y-%m-%dT%H:%MZ')
+            return datetime.strptime(date_str, '%Y-%m-%dT%H:%M:%SZ')
+        except (ValueError, TypeError) as e:
             return date_str
+            
+    def _get_nested_value(self, data, keys, default=None):
+        """
+        Safely get a value from a nested dictionary using a list of keys
+        
+        Args:
+            data: The dictionary to search
+            keys: List of keys/indices to traverse
+            default: Default value to return if any key is not found
+            
+        Returns:
+            The value if found, otherwise default
+        """
+        try:
+            for key in keys:
+                if isinstance(data, (list, tuple)) and isinstance(key, int):
+                    data = data[key] if abs(key) < len(data) else default
+                elif isinstance(data, dict):
+                    data = data.get(key, default)
+                else:
+                    return default
+                if data is None:
+                    return default
+            return data
+        except (KeyError, IndexError, TypeError, AttributeError):
+            return default
+            
+    def _get_broadcast_info(self):
+        """Extract broadcast information from the competition data"""
+        broadcasts = []
+        for broadcast in self.competition.get('broadcasts', []):
+            if 'names' in broadcast and isinstance(broadcast['names'], list):
+                broadcasts.extend(name for name in broadcast['names'] if name)
+        return broadcasts
 
     @classmethod
     async def _get_async(cls, game_id):
